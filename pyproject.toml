@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "adl"
+version = "0.1.0"
+description = ""
+authors = ["Ala Blidi <blidiala32@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+shap = "^0.51.0"
+optuna = "^4.7.0"
+scikit-learn = "^1.8.0"
+pandas = "^3.0.1"
+numpy = "^2.4.3"
+matplotlib = "^3.10.8"
+seaborn = "^0.13.2"
+tensorflow = "^2.21.0"
+keras = "^3.13.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
