@@ -14,22 +14,24 @@ def sample_df():
     """Minimal Heart Disease-like DataFrame for unit tests."""
     np.random.seed(42)
     n = 50
-    return pd.DataFrame({
-        "age": np.random.randint(30, 75, n),
-        "sex": np.random.randint(0, 2, n),
-        "cp": np.random.randint(0, 4, n),
-        "trestbps": np.random.randint(90, 200, n),
-        "chol": np.random.randint(120, 400, n),
-        "fbs": np.random.randint(0, 2, n),
-        "restecg": np.random.randint(0, 3, n),
-        "thalach": np.random.randint(70, 210, n),
-        "exang": np.random.randint(0, 2, n),
-        "oldpeak": np.random.uniform(0, 6, n).round(1),
-        "slope": np.random.randint(0, 3, n),
-        "ca": np.random.randint(0, 4, n),
-        "thal": np.random.randint(0, 3, n),
-        "target": np.random.randint(0, 2, n),
-    })
+    return pd.DataFrame(
+        {
+            "age": np.random.randint(30, 75, n),
+            "sex": np.random.randint(0, 2, n),
+            "cp": np.random.randint(0, 4, n),
+            "trestbps": np.random.randint(90, 200, n),
+            "chol": np.random.randint(120, 400, n),
+            "fbs": np.random.randint(0, 2, n),
+            "restecg": np.random.randint(0, 3, n),
+            "thalach": np.random.randint(70, 210, n),
+            "exang": np.random.randint(0, 2, n),
+            "oldpeak": np.random.uniform(0, 6, n).round(1),
+            "slope": np.random.randint(0, 3, n),
+            "ca": np.random.randint(0, 4, n),
+            "thal": np.random.randint(0, 3, n),
+            "target": np.random.randint(0, 2, n),
+        }
+    )
 
 
 @pytest.fixture()

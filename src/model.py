@@ -45,22 +45,26 @@ def get_models(best_k: int = 9) -> dict:
     dict[str, estimator]
     """
     models = {
-        "LR": Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", LogisticRegression(max_iter=1000, random_state=RANDOM_STATE)),
-        ]),
-        "KNN": Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", KNeighborsClassifier(n_neighbors=best_k)),
-        ]),
-        "DT": DecisionTreeClassifier(max_depth=5, random_state=RANDOM_STATE),
-        "RF": RandomForestClassifier(
-            n_estimators=200, random_state=RANDOM_STATE, n_jobs=-1
+        "LR": Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("clf", LogisticRegression(max_iter=1000, random_state=RANDOM_STATE)),
+            ]
         ),
-        "SVM": Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", SVC(kernel="rbf", probability=True, random_state=RANDOM_STATE)),
-        ]),
+        "KNN": Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("clf", KNeighborsClassifier(n_neighbors=best_k)),
+            ]
+        ),
+        "DT": DecisionTreeClassifier(max_depth=5, random_state=RANDOM_STATE),
+        "RF": RandomForestClassifier(n_estimators=200, random_state=RANDOM_STATE, n_jobs=-1),
+        "SVM": Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("clf", SVC(kernel="rbf", probability=True, random_state=RANDOM_STATE)),
+            ]
+        ),
     }
     return models
 
@@ -199,24 +203,26 @@ def build_ann(input_dim: int, dropout_rate: float = 0.3, l2_reg: float = 0.001):
 
     tf.random.set_seed(RANDOM_STATE)
 
-    model = keras.Sequential([
-        layers.Input(shape=(input_dim,)),
-        # Bloc 1
-        layers.Dense(128, kernel_regularizer=regularizers.l2(l2_reg)),
-        layers.BatchNormalization(),
-        layers.Activation("relu"),
-        layers.Dropout(dropout_rate),
-        # Bloc 2
-        layers.Dense(64, kernel_regularizer=regularizers.l2(l2_reg)),
-        layers.BatchNormalization(),
-        layers.Activation("relu"),
-        layers.Dropout(dropout_rate),
-        # Bloc 3
-        layers.Dense(32, activation="relu"),
-        layers.Dropout(dropout_rate / 2),
-        # Sortie
-        layers.Dense(1, activation="sigmoid"),
-    ])
+    model = keras.Sequential(
+        [
+            layers.Input(shape=(input_dim,)),
+            # Bloc 1
+            layers.Dense(128, kernel_regularizer=regularizers.l2(l2_reg)),
+            layers.BatchNormalization(),
+            layers.Activation("relu"),
+            layers.Dropout(dropout_rate),
+            # Bloc 2
+            layers.Dense(64, kernel_regularizer=regularizers.l2(l2_reg)),
+            layers.BatchNormalization(),
+            layers.Activation("relu"),
+            layers.Dropout(dropout_rate),
+            # Bloc 3
+            layers.Dense(32, activation="relu"),
+            layers.Dropout(dropout_rate / 2),
+            # Sortie
+            layers.Dense(1, activation="sigmoid"),
+        ]
+    )
 
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=0.001),

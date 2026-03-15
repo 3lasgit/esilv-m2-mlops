@@ -12,7 +12,6 @@ from data import (
     _encode,
 )
 
-
 # ── _cap_outliers_iqr ────────────────────────────────────────
 
 
@@ -58,9 +57,7 @@ class TestAddFeatures:
     def test_cardio_risk_score_computation(self, sample_df):
         result = _add_features(sample_df)
         expected = (
-            (sample_df["trestbps"] / 120)
-            * (sample_df["chol"] / 200)
-            * (sample_df["age"] / 60)
+            (sample_df["trestbps"] / 120) * (sample_df["chol"] / 200) * (sample_df["age"] / 60)
         )
         np.testing.assert_array_almost_equal(result["cardio_risk_score"], expected)
 
@@ -86,7 +83,9 @@ class TestEncode:
 
     def test_creates_dummy_columns(self, sample_df):
         result = _encode(sample_df)
-        dummy_cols = [c for c in result.columns if any(c.startswith(f"{cat}_") for cat in CAT_TO_ENCODE)]
+        dummy_cols = [
+            c for c in result.columns if any(c.startswith(f"{cat}_") for cat in CAT_TO_ENCODE)
+        ]
         assert len(dummy_cols) > 0
 
     def test_preserves_non_cat_columns(self, sample_df):

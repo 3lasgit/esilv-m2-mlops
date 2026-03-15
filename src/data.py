@@ -14,9 +14,7 @@ warnings.filterwarnings("ignore")
 
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
-URL_DATASET = (
-    "https://raw.githubusercontent.com/dsrscientist/dataset1/master/heart_disease.csv"
-)
+URL_DATASET = "https://raw.githubusercontent.com/dsrscientist/dataset1/master/heart_disease.csv"
 COLUMNS = [
     "age",
     "sex",
@@ -62,9 +60,7 @@ def _load_raw() -> pd.DataFrame:
     return df
 
 
-def _cap_outliers_iqr(
-    df: pd.DataFrame, columns: list, factor: float = 1.5
-) -> pd.DataFrame:
+def _cap_outliers_iqr(df: pd.DataFrame, columns: list, factor: float = 1.5) -> pd.DataFrame:
     """Écrêtage des outliers par méthode IQR."""
     df = df.copy()
     for col in columns:
