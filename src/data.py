@@ -14,12 +14,22 @@ warnings.filterwarnings("ignore")
 
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
-URL_DATASET = (
-    "https://raw.githubusercontent.com/dsrscientist/dataset1/master/heart_disease.csv"
-)
+URL_DATASET = "https://raw.githubusercontent.com/dsrscientist/dataset1/master/heart_disease.csv"
 COLUMNS = [
-    "age", "sex", "cp", "trestbps", "chol", "fbs",
-    "restecg", "thalach", "exang", "oldpeak", "slope", "ca", "thal", "target",
+    "age",
+    "sex",
+    "cp",
+    "trestbps",
+    "chol",
+    "fbs",
+    "restecg",
+    "thalach",
+    "exang",
+    "oldpeak",
+    "slope",
+    "ca",
+    "thal",
+    "target",
 ]
 CAT_TO_ENCODE = ["cp", "restecg", "slope", "thal"]
 OUTLIER_COLS = ["trestbps", "chol", "oldpeak"]
@@ -28,6 +38,7 @@ OUTLIER_COLS = ["trestbps", "chol", "oldpeak"]
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
+
 
 def _load_raw() -> pd.DataFrame:
     """Charge le dataset brut depuis l'URL ou OpenML en fallback."""
@@ -71,9 +82,7 @@ def _add_features(df: pd.DataFrame) -> pd.DataFrame:
     # Réserve cardiaque normalisée par l'âge
     df["hr_age_ratio"] = df["thalach"] / df["age"]
     # Score de risque cardiovasculaire composé
-    df["cardio_risk_score"] = (
-        (df["trestbps"] / 120) * (df["chol"] / 200) * (df["age"] / 60)
-    )
+    df["cardio_risk_score"] = (df["trestbps"] / 120) * (df["chol"] / 200) * (df["age"] / 60)
     # Stress cardiaque : dépression ST × angine d'effort
     df["exang_oldpeak"] = df["exang"] * df["oldpeak"]
     return df
@@ -90,6 +99,7 @@ def _encode(df: pd.DataFrame) -> pd.DataFrame:
 # ------------------------------------------------------------------
 # API publique
 # ------------------------------------------------------------------
+
 
 def load_and_preprocess():
     """

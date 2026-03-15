@@ -12,20 +12,17 @@
 # ============================================================
 
 import warnings
+
+warnings.filterwarnings("ignore")
+
 from pathlib import Path
 
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.metrics import (
-    accuracy_score,
-    f1_score,
-    roc_auc_score,
-)
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-
-warnings.filterwarnings("ignore")
 
 from data import load_and_preprocess
 from model import build_ann, get_models, select_best_k, tune_rf, tune_svm
@@ -39,6 +36,7 @@ MODELS_DIR.mkdir(exist_ok=True)
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
+
 
 def _make_cv() -> StratifiedKFold:
     return StratifiedKFold(n_splits=CV_SPLITS, shuffle=True, random_state=RANDOM_STATE)
@@ -60,7 +58,7 @@ def evaluate_model(name: str, model, X_tr, X_te, y_tr, y_te, cv) -> dict:
     dict contenant toutes les métriques + l'objet modèle fitté
     """
     cv_acc = cross_val_score(model, X_tr, y_tr, cv=cv, scoring="accuracy")
-    cv_f1  = cross_val_score(model, X_tr, y_tr, cv=cv, scoring="f1")
+    cv_f1 = cross_val_score(model, X_tr, y_tr, cv=cv, scoring="f1")
     cv_auc = cross_val_score(model, X_tr, y_tr, cv=cv, scoring="roc_auc")
 
     model.fit(X_tr, y_tr)
@@ -68,17 +66,17 @@ def evaluate_model(name: str, model, X_tr, X_te, y_tr, y_te, cv) -> dict:
     y_prob = model.predict_proba(X_te)[:, 1] if hasattr(model, "predict_proba") else None
 
     metrics = {
-        "Model":      name,
-        "CV_Acc":     cv_acc.mean(),
+        "Model": name,
+        "CV_Acc": cv_acc.mean(),
         "CV_Acc_std": cv_acc.std(),
-        "CV_F1":      cv_f1.mean(),
-        "CV_AUC":     cv_auc.mean(),
-        "Test_Acc":   accuracy_score(y_te, y_pred),
-        "Test_F1":    f1_score(y_te, y_pred),
-        "Test_AUC":   roc_auc_score(y_te, y_prob) if y_prob is not None else None,
-        "model_obj":  model,
-        "y_pred":     y_pred,
-        "y_prob":     y_prob,
+        "CV_F1": cv_f1.mean(),
+        "CV_AUC": cv_auc.mean(),
+        "Test_Acc": accuracy_score(y_te, y_pred),
+        "Test_F1": f1_score(y_te, y_pred),
+        "Test_AUC": roc_auc_score(y_te, y_prob) if y_prob is not None else None,
+        "model_obj": model,
+        "y_pred": y_pred,
+        "y_prob": y_prob,
     }
 
     print(
@@ -97,10 +95,10 @@ def print_summary(results: dict, ann_metrics: dict) -> None:
 
     rows = [
         {
-            "Modèle":    v.get("Model", k),
-            "Accuracy":  round(v["Test_Acc"], 4),
-            "F1-Score":  round(v["Test_F1"], 4),
-            "AUC-ROC":   round(v["Test_AUC"], 4),
+            "Modèle": v.get("Model", k),
+            "Accuracy": round(v["Test_Acc"], 4),
+            "F1-Score": round(v["Test_F1"], 4),
+            "AUC-ROC": round(v["Test_AUC"], 4),
         }
         for k, v in all_results.items()
         if v.get("Test_AUC") is not None
@@ -119,6 +117,7 @@ def print_summary(results: dict, ann_metrics: dict) -> None:
 # Pipeline principal
 # ------------------------------------------------------------------
 
+
 def main() -> None:
     np.random.seed(RANDOM_STATE)
 
@@ -129,10 +128,14 @@ def main() -> None:
     print("  ÉTAPE 1 — Chargement & preprocessing")
     print("=" * 60)
     (
-        X_train_all, X_test_all,
-        X_train_scaled, X_test_scaled,
-        y_train, y_test,
-        feature_names, scaler,
+        X_train_all,
+        X_test_all,
+        X_train_scaled,
+        X_test_scaled,
+        y_train,
+        y_test,
+        feature_names,
+        scaler,
     ) = load_and_preprocess()
 
     cv = _make_cv()
@@ -158,19 +161,27 @@ def main() -> None:
         results[key] = evaluate_model(
             models[key].steps[-1][1].__class__.__name__ if key != "KNN" else "KNN",
             models[key],
-            X_train_all, X_test_all,
-            y_train, y_test,
+            X_train_all,
+            X_test_all,
+            y_train,
+            y_test,
             cv,
         )
-        results[key]["Model"] = {"LR": "Logistic Regression", "KNN": "KNN", "SVM": "SVM (RBF)"}[key]
+        results[key]["Model"] = {
+            "LR": "Logistic Regression",
+            "KNN": "KNN",
+            "SVM": "SVM (RBF)",
+        }[key]
 
     # DT et RF → features brutes (pas besoin de scaler)
     for key in ("DT", "RF"):
         results[key] = evaluate_model(
             {"DT": "Decision Tree", "RF": "Random Forest"}[key],
             models[key],
-            X_train_all.values, X_test_all.values,
-            y_train, y_test,
+            X_train_all.values,
+            X_test_all.values,
+            y_train,
+            y_test,
             cv,
         )
 
@@ -186,12 +197,12 @@ def main() -> None:
     y_pred_rf_t = rf_tuned.predict(X_test_all.values)
     y_prob_rf_t = rf_tuned.predict_proba(X_test_all.values)[:, 1]
     results["RF_tuned"] = {
-        "Model":    "RF (Tuned)",
+        "Model": "RF (Tuned)",
         "Test_Acc": accuracy_score(y_test, y_pred_rf_t),
-        "Test_F1":  f1_score(y_test, y_pred_rf_t),
+        "Test_F1": f1_score(y_test, y_pred_rf_t),
         "Test_AUC": roc_auc_score(y_test, y_prob_rf_t),
-        "y_pred":   y_pred_rf_t,
-        "y_prob":   y_prob_rf_t,
+        "y_pred": y_pred_rf_t,
+        "y_prob": y_prob_rf_t,
         "model_obj": rf_tuned,
     }
 
@@ -200,12 +211,12 @@ def main() -> None:
     y_pred_svm_t = svm_tuned.predict(X_test_scaled)
     y_prob_svm_t = svm_tuned.predict_proba(X_test_scaled)[:, 1]
     results["SVM_tuned"] = {
-        "Model":    "SVM (Tuned)",
+        "Model": "SVM (Tuned)",
         "Test_Acc": accuracy_score(y_test, y_pred_svm_t),
-        "Test_F1":  f1_score(y_test, y_pred_svm_t),
+        "Test_F1": f1_score(y_test, y_pred_svm_t),
         "Test_AUC": roc_auc_score(y_test, y_prob_svm_t),
-        "y_pred":   y_pred_svm_t,
-        "y_prob":   y_prob_svm_t,
+        "y_pred": y_pred_svm_t,
+        "y_prob": y_prob_svm_t,
         "model_obj": svm_tuned,
     }
 
@@ -221,17 +232,24 @@ def main() -> None:
 
     callbacks = [
         EarlyStopping(
-            monitor="val_auc", patience=20,
-            restore_best_weights=True, mode="max", verbose=1,
+            monitor="val_auc",
+            patience=20,
+            restore_best_weights=True,
+            mode="max",
+            verbose=1,
         ),
         ReduceLROnPlateau(
-            monitor="val_loss", factor=0.5,
-            patience=10, min_lr=1e-6, verbose=0,
+            monitor="val_loss",
+            factor=0.5,
+            patience=10,
+            min_lr=1e-6,
+            verbose=0,
         ),
     ]
 
     history = ann.fit(
-        X_train_scaled, y_train,
+        X_train_scaled,
+        y_train,
         epochs=200,
         batch_size=32,
         validation_split=0.2,
@@ -244,9 +262,9 @@ def main() -> None:
     y_pred_ann = (y_prob_ann >= 0.5).astype(int)
 
     ann_metrics = {
-        "Model":    "ANN (Deep Learning)",
+        "Model": "ANN (Deep Learning)",
         "Test_Acc": accuracy_score(y_test, y_pred_ann),
-        "Test_F1":  f1_score(y_test, y_pred_ann),
+        "Test_F1": f1_score(y_test, y_pred_ann),
         "Test_AUC": roc_auc_score(y_test, y_prob_ann),
     }
     print(
@@ -265,9 +283,9 @@ def main() -> None:
     # 7. Sauvegarde des modèles
     # ----------------------------------------------------------
     print("\n=== Sauvegarde des modèles ===")
-    joblib.dump(rf_tuned,  MODELS_DIR / "rf_tuned.joblib")
+    joblib.dump(rf_tuned, MODELS_DIR / "rf_tuned.joblib")
     joblib.dump(svm_tuned, MODELS_DIR / "svm_tuned.joblib")
-    joblib.dump(scaler,    MODELS_DIR / "scaler.joblib")
+    joblib.dump(scaler, MODELS_DIR / "scaler.joblib")
     ann.save(MODELS_DIR / "ann.keras")
     print(f"✅ Modèles sauvegardés dans {MODELS_DIR}/")
 
