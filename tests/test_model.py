@@ -1,7 +1,6 @@
 """Unit tests for src/model.py — model definitions and tuning."""
 
 import numpy as np
-import pytest
 from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 
