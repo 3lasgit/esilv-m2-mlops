@@ -3,7 +3,7 @@
 # Script d'entraînement principal — Heart Disease UCI
 # ============================================================
 # Usage :
-#   python src/train.py
+#   uv run python src/train.py
 #
 # Sorties :
 #   models/rf_tuned.joblib

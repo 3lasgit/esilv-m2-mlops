@@ -1,3 +1,8 @@
+# ============================================================
+# src/data.py
+# Module de chargement et preprocessing — Heart Disease UCI
+# ============================================================
+
 import warnings
 
 import numpy as np
