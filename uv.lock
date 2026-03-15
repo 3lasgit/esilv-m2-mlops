@@ -502,6 +502,7 @@ dependencies = [
 dev = [
     { name = "black" },
     { name = "isort" },
+    { name = "mlflow" },
     { name = "mypy" },
     { name = "pre-commit" },
     { name = "pytest" },
@@ -528,6 +529,7 @@ requires-dist = [
 dev = [
     { name = "black", specifier = ">=25.1.0" },
     { name = "isort", specifier = ">=6.0.0" },
+    { name = "mlflow", specifier = ">=1.27.0" },
     { name = "mypy", specifier = ">=1.15.0" },
     { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "pytest", specifier = ">=8.3.0" },
