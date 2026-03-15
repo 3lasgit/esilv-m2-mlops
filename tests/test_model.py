@@ -2,6 +2,7 @@
 
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
+from sklearn.pipeline import Pipeline
 
 from model import RANDOM_STATE, get_models, select_best_k
 
