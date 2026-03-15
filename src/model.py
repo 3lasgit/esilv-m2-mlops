@@ -7,7 +7,7 @@ import numpy as np
 from scipy.stats import loguniform
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, StratifiedKFold
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, StratifiedKFold, cross_val_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -21,6 +21,7 @@ CV_SPLITS = 5
 # ------------------------------------------------------------------
 # Modèles baseline
 # ------------------------------------------------------------------
+
 
 def get_models(best_k: int = 9) -> dict:
     """
@@ -76,8 +77,6 @@ def select_best_k(X_train_scaled: np.ndarray, y_train, cv=None) -> int:
     if cv is None:
         cv = StratifiedKFold(n_splits=CV_SPLITS, shuffle=True, random_state=RANDOM_STATE)
 
-    from sklearn.model_selection import cross_val_score
-
     k_scores = []
     for k in range(1, 21):
         knn = KNeighborsClassifier(n_neighbors=k)
@@ -93,9 +92,8 @@ def select_best_k(X_train_scaled: np.ndarray, y_train, cv=None) -> int:
 # Hyperparameter Tuning
 # ------------------------------------------------------------------
 
-def tune_rf(
-    X_train, y_train, cv=None
-) -> tuple[RandomForestClassifier, dict]:
+
+def tune_rf(X_train, y_train, cv=None) -> tuple[RandomForestClassifier, dict]:
     """
     GridSearchCV sur Random Forest.
 
@@ -129,9 +127,7 @@ def tune_rf(
     return grid.best_estimator_, grid.best_params_
 
 
-def tune_svm(
-    X_train_scaled: np.ndarray, y_train, cv=None
-) -> tuple[SVC, dict]:
+def tune_svm(X_train_scaled: np.ndarray, y_train, cv=None) -> tuple[SVC, dict]:
     """
     RandomizedSearchCV sur SVM (50 itérations).
 
@@ -170,6 +166,7 @@ def tune_svm(
 # ANN (Keras)
 # ------------------------------------------------------------------
 
+
 def build_ann(input_dim: int, dropout_rate: float = 0.3, l2_reg: float = 0.001):
     """
     Construit et compile un ANN binaire (Dense 128→64→32→1).
@@ -199,23 +196,19 @@ def build_ann(input_dim: int, dropout_rate: float = 0.3, l2_reg: float = 0.001):
 
     model = keras.Sequential([
         layers.Input(shape=(input_dim,)),
-
         # Bloc 1
         layers.Dense(128, kernel_regularizer=regularizers.l2(l2_reg)),
         layers.BatchNormalization(),
         layers.Activation("relu"),
         layers.Dropout(dropout_rate),
-
         # Bloc 2
         layers.Dense(64, kernel_regularizer=regularizers.l2(l2_reg)),
         layers.BatchNormalization(),
         layers.Activation("relu"),
         layers.Dropout(dropout_rate),
-
         # Bloc 3
         layers.Dense(32, activation="relu"),
         layers.Dropout(dropout_rate / 2),
-
         # Sortie
         layers.Dense(1, activation="sigmoid"),
     ])
