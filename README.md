@@ -348,8 +348,6 @@ Le lien vers la vidéo de démonstration (pipeline CI/CD + API) est disponible d
 ---
 
 ## Auteurs
-
-| Rôle | Contact |
 |------|---------|
-| Étudiant A | — |
-| Étudiant B | — |
+| BLIDI Ala |  |
+| TLEMSANI Sofiane | — |
