@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+
 from data import (
     CAT_TO_ENCODE,
     COLUMNS,

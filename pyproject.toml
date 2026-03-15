@@ -38,6 +38,9 @@ src = ["src", "tests"]
 select = ["E", "F", "W", "I", "UP", "B", "SIM"]
 ignore = ["E501", "E402"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["data", "model", "train"]
+
 # ── Black ─────────────────────────────────────────────────────
 [tool.black]
 line-length = 100
