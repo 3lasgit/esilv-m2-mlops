@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 
-from model import RANDOM_STATE, get_models, select_best_k
+from model import RANDOM_STATE, get_models, select_best_k, tune_rf, tune_svm
 
 # ── get_models ───────────────────────────────────────────────
 
@@ -112,3 +112,41 @@ class TestModelTraining:
         models["SVM"].fit(X_train, y_train)
         preds = models["SVM"].predict(X_test)
         assert len(preds) == len(X_test)
+
+
+# ── tune_rf ──────────────────────────────────────────────────
+
+
+class TestTuneRf:
+    def test_returns_estimator_and_params(self, xy_scaled):
+        X_train, _, _, _, y_train, _ = xy_scaled
+        cv = StratifiedKFold(n_splits=2, shuffle=True, random_state=RANDOM_STATE)
+        best_model, best_params = tune_rf(X_train.values, y_train, cv=cv)
+        assert hasattr(best_model, "predict")
+        assert isinstance(best_params, dict)
+
+    def test_best_params_keys(self, xy_scaled):
+        X_train, _, _, _, y_train, _ = xy_scaled
+        cv = StratifiedKFold(n_splits=2, shuffle=True, random_state=RANDOM_STATE)
+        _, best_params = tune_rf(X_train.values, y_train, cv=cv)
+        assert "n_estimators" in best_params
+        assert "max_depth" in best_params
+
+
+# ── tune_svm ─────────────────────────────────────────────────
+
+
+class TestTuneSvm:
+    def test_returns_estimator_and_params(self, xy_scaled):
+        _, _, X_train_s, _, y_train, _ = xy_scaled
+        cv = StratifiedKFold(n_splits=2, shuffle=True, random_state=RANDOM_STATE)
+        best_model, best_params = tune_svm(X_train_s, y_train, cv=cv)
+        assert hasattr(best_model, "predict")
+        assert isinstance(best_params, dict)
+
+    def test_best_params_keys(self, xy_scaled):
+        _, _, X_train_s, _, y_train, _ = xy_scaled
+        cv = StratifiedKFold(n_splits=2, shuffle=True, random_state=RANDOM_STATE)
+        _, best_params = tune_svm(X_train_s, y_train, cv=cv)
+        assert "C" in best_params
+        assert "kernel" in best_params

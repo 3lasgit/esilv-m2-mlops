@@ -1,5 +1,7 @@
 """Unit tests for src/data.py — preprocessing helpers."""
 
+from unittest.mock import patch
+
 import numpy as np
 import pandas as pd
 
@@ -10,6 +12,8 @@ from data import (
     _add_features,
     _cap_outliers_iqr,
     _encode,
+    _load_raw,
+    load_and_preprocess,
 )
 
 # ── _cap_outliers_iqr ────────────────────────────────────────
@@ -119,3 +123,61 @@ class TestConstants:
 
     def test_cat_to_encode_subset_of_columns(self):
         assert all(c in COLUMNS for c in CAT_TO_ENCODE)
+
+
+# ── _load_raw ────────────────────────────────────────────────
+
+
+class TestLoadRaw:
+    def test_loads_dataframe_with_target(self, sample_df):
+        with patch("data.pd.read_csv", return_value=sample_df):
+            df = _load_raw()
+            assert "target" in df.columns
+            assert isinstance(df, pd.DataFrame)
+
+    def test_fallback_adds_columns_if_no_target(self, sample_df):
+        df_no_target = sample_df.rename(columns={"target": "other"})
+        with patch("data.pd.read_csv", return_value=df_no_target):
+            df = _load_raw()
+            assert "target" in df.columns
+
+    def test_fallback_on_csv_failure(self, sample_df):
+        with (
+            patch("data.pd.read_csv", side_effect=Exception("network error")),
+            patch("sklearn.datasets.fetch_openml") as mock_openml,
+        ):
+            mock_openml.return_value.frame = sample_df.copy()
+            mock_openml.return_value.frame.rename(columns={"target": "class"}, inplace=True)
+            mock_openml.return_value.frame["class"] = "present"
+            df = _load_raw()
+            assert "target" in df.columns
+
+
+# ── load_and_preprocess ──────────────────────────────────────
+
+
+class TestLoadAndPreprocess:
+    def test_returns_correct_tuple_length(self, sample_df):
+        with patch("data._load_raw", return_value=sample_df):
+            result = load_and_preprocess()
+            assert len(result) == 8
+
+    def test_shapes_consistent(self, sample_df):
+        with patch("data._load_raw", return_value=sample_df):
+            X_train, X_test, X_train_s, X_test_s, y_train, y_test, feat, scaler = (
+                load_and_preprocess()
+            )
+            assert X_train.shape[0] == len(y_train)
+            assert X_test.shape[0] == len(y_test)
+            assert X_train_s.shape == X_train.shape
+            assert X_test_s.shape == X_test.shape
+
+    def test_feature_names_match_columns(self, sample_df):
+        with patch("data._load_raw", return_value=sample_df):
+            X_train, _, _, _, _, _, feat, _ = load_and_preprocess()
+            assert feat == list(X_train.columns)
+
+    def test_scaler_is_fitted(self, sample_df):
+        with patch("data._load_raw", return_value=sample_df):
+            _, _, _, _, _, _, _, scaler = load_and_preprocess()
+            assert hasattr(scaler, "mean_")

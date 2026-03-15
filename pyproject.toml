@@ -63,3 +63,7 @@ disallow_untyped_defs = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--tb=short -q"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/train.py"]
