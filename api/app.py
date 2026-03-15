@@ -1,0 +1,238 @@
+# ============================================================
+# api/app.py
+# API REST — Heart Disease Prediction
+# ============================================================
+# Usage :
+#   uvicorn api.app:app --reload --port 8000
+#   POST http://localhost:8000/predict
+#
+# Variables d'environnement :
+#   MLFLOW_TRACKING_URI   (défaut : http://localhost:5000)
+#   MODEL_STAGE           (défaut : Production, fallback : Staging)
+#   USE_LOCAL_MODEL       (défaut : false) — bypass MLflow, charge depuis models/
+# ============================================================
+
+import logging
+import os
+import time
+from contextlib import asynccontextmanager
+
+import numpy as np
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+_model = None
+_scaler = None
+_model_version = "local"
+_model_source = "local"
+
+
+# ------------------------------------------------------------------
+# Schémas Pydantic (inchangés)
+# ------------------------------------------------------------------
+
+class PredictRequest(BaseModel):
+    age:      float = Field(..., ge=1,   le=120)
+    sex:      float = Field(..., ge=0,   le=1)
+    trestbps: float = Field(..., ge=60,  le=250)
+    chol:     float = Field(..., ge=100, le=600)
+    fbs:      float = Field(..., ge=0,   le=1)
+    thalach:  float = Field(..., ge=60,  le=220)
+    exang:    float = Field(..., ge=0,   le=1)
+    oldpeak:  float = Field(..., ge=0.0, le=10.0)
+    ca:       float = Field(..., ge=0,   le=3)
+    cp_0: float = Field(0.0, ge=0, le=1)
+    cp_1: float = Field(0.0, ge=0, le=1)
+    cp_2: float = Field(0.0, ge=0, le=1)
+    cp_3: float = Field(0.0, ge=0, le=1)
+    restecg_0: float = Field(0.0, ge=0, le=1)
+    restecg_1: float = Field(0.0, ge=0, le=1)
+    restecg_2: float = Field(0.0, ge=0, le=1)
+    slope_0: float = Field(0.0, ge=0, le=1)
+    slope_1: float = Field(0.0, ge=0, le=1)
+    slope_2: float = Field(0.0, ge=0, le=1)
+    thal_0: float = Field(0.0, ge=0, le=1)
+    thal_1: float = Field(0.0, ge=0, le=1)
+    thal_2: float = Field(0.0, ge=0, le=1)
+    hr_age_ratio:      float = Field(...)
+    cardio_risk_score: float = Field(...)
+    exang_oldpeak:     float = Field(...)
+
+    model_config = {"json_schema_extra": {"example": {
+        "age": 54, "sex": 1, "trestbps": 130, "chol": 256,
+        "fbs": 0, "thalach": 147, "exang": 0, "oldpeak": 1.4, "ca": 0,
+        "cp_0": 1, "cp_1": 0, "cp_2": 0, "cp_3": 0,
+        "restecg_0": 1, "restecg_1": 0, "restecg_2": 0,
+        "slope_0": 0, "slope_1": 1, "slope_2": 0,
+        "thal_0": 0, "thal_1": 0, "thal_2": 1,
+        "hr_age_ratio": 2.72, "cardio_risk_score": 1.30, "exang_oldpeak": 0.0,
+    }}}
+
+
+class PredictResponse(BaseModel):
+    prediction:    int
+    probability:   float
+    label:         str
+    model_name:    str
+    model_version: str
+    model_source:  str
+    latency_ms:    float
+
+
+class HealthResponse(BaseModel):
+    status:        str
+    model_loaded:  bool
+    model_version: str
+    model_source:  str
+
+
+# ------------------------------------------------------------------
+# Helpers de chargement
+# ------------------------------------------------------------------
+
+def _load_from_mlflow() -> tuple:
+    """
+    Charge le modèle depuis le MLflow Model Registry.
+    Essaie d'abord le stage Production, puis Staging en fallback.
+
+    Returns
+    -------
+    (model, version_str, source_str)
+    """
+    import mlflow.sklearn
+
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+    mlflow.set_tracking_uri(tracking_uri)
+
+    registered_name = "heart-disease-classifier"
+    stage = os.getenv("MODEL_STAGE", "Production")
+
+    stages_to_try = [stage, "Staging"] if stage == "Production" else [stage]
+
+    for s in stages_to_try:
+        model_uri = f"models:/{registered_name}/{s}"
+        try:
+            model = mlflow.sklearn.load_model(model_uri)
+            logger.info(f"✅ Modèle chargé depuis MLflow — {model_uri}")
+            return model, s, f"mlflow:{tracking_uri}"
+        except Exception as e:
+            logger.warning(f"⚠️  Impossible de charger depuis MLflow ({s}) : {e}")
+
+    raise RuntimeError(
+        f"Aucun modèle disponible dans le registry MLflow ({tracking_uri}). "
+        "Lance python src/registry.py --promote pour enregistrer un modèle."
+    )
+
+
+def _load_from_local() -> tuple:
+    """Fallback : charge le modèle depuis le système de fichiers local."""
+    import joblib
+    from pathlib import Path
+
+    model  = joblib.load(Path("models") / "rf_tuned.joblib")
+    logger.info("✅ Modèle chargé depuis models/rf_tuned.joblib (local)")
+    return model, "local", "filesystem"
+
+
+def _load_scaler():
+    import joblib
+    from pathlib import Path
+    return joblib.load(Path("models") / "scaler.joblib")
+
+
+# ------------------------------------------------------------------
+# Lifespan
+# ------------------------------------------------------------------
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global _model, _scaler, _model_version, _model_source
+
+    use_local = os.getenv("USE_LOCAL_MODEL", "false").lower() == "true"
+
+    try:
+        if use_local:
+            _model, _model_version, _model_source = _load_from_local()
+        else:
+            try:
+                _model, _model_version, _model_source = _load_from_mlflow()
+            except RuntimeError as e:
+                logger.warning(f"{e}\n→ Fallback vers le modèle local.")
+                _model, _model_version, _model_source = _load_from_local()
+
+        _scaler = _load_scaler()
+
+    except Exception as e:
+        logger.error(f"❌ Impossible de charger le modèle : {e}")
+        logger.error("   L'endpoint /predict retournera 503.")
+
+    yield
+    _model = _scaler = None
+
+
+# ------------------------------------------------------------------
+# App
+# ------------------------------------------------------------------
+
+app = FastAPI(
+    title="Heart Disease Prediction API",
+    description="Prédit la présence d'une maladie cardiaque à partir de données cliniques.",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+FEATURE_ORDER = [
+    "age", "sex", "trestbps", "chol", "fbs", "thalach", "exang",
+    "oldpeak", "ca",
+    "cp_0", "cp_1", "cp_2", "cp_3",
+    "restecg_0", "restecg_1", "restecg_2",
+    "slope_0", "slope_1", "slope_2",
+    "thal_0", "thal_1", "thal_2",
+    "hr_age_ratio", "cardio_risk_score", "exang_oldpeak",
+]
+
+
+# ------------------------------------------------------------------
+# Endpoints
+# ------------------------------------------------------------------
+
+@app.get("/health", response_model=HealthResponse, tags=["Monitoring"])
+def health():
+    return HealthResponse(
+        status="ok" if _model is not None else "degraded",
+        model_loaded=_model is not None,
+        model_version=_model_version,
+        model_source=_model_source,
+    )
+
+
+@app.post("/predict", response_model=PredictResponse, tags=["Prediction"])
+def predict(request: PredictRequest):
+    """Prédit la présence d'une maladie cardiaque."""
+    if _model is None or _scaler is None:
+        raise HTTPException(status_code=503, detail="Modèle non disponible.")
+
+    t0 = time.perf_counter()
+
+    data = request.model_dump()
+    features = np.array([[data[f] for f in FEATURE_ORDER]])
+    features_scaled = _scaler.transform(features)
+
+    pred  = int(_model.predict(features_scaled)[0])
+    proba = float(_model.predict_proba(features_scaled)[0][1])
+
+    latency_ms = (time.perf_counter() - t0) * 1000
+    logger.info(f"/predict — pred={pred} proba={proba:.3f} latency={latency_ms:.1f}ms")
+
+    return PredictResponse(
+        prediction=pred,
+        probability=round(proba, 4),
+        label="Maladie cardiaque détectée" if pred == 1 else "Aucune maladie détectée",
+        model_name="heart-disease-classifier",
+        model_version=_model_version,
+        model_source=_model_source,
+        latency_ms=round(latency_ms, 2),
+    )
