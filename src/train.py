@@ -12,6 +12,9 @@
 # ============================================================
 
 import warnings
+
+warnings.filterwarnings("ignore")
+
 from pathlib import Path
 
 import joblib
@@ -20,8 +23,6 @@ import pandas as pd
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-
-warnings.filterwarnings("ignore")
 
 from data import load_and_preprocess
 from model import build_ann, get_models, select_best_k, tune_rf, tune_svm
